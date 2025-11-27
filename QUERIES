@@ -493,15 +493,18 @@ ON O.SalesPersonID = E.EmployeeID
 	3. EXCEPT (Minus)
 	4. INTERSECT
 
-	NB: NO.of columns has to be the same
-		The data types of each column in each query must match
-		Have the same number of columns and in the same order
+	NB: # NO.of columns has to be the same
+		# The data types of each column in each query must match
+		# Have the same number of columns and in the same order
+		# The column names in the result set are determined by the column names specified in the first query.
+		# ORDER BY can be used only once
+		# Ensure that you are mapping correct columns
 
 */
 
 -- EXAMPLE
 
--- 1. UNION
+-- 1. UNION -> Returns all distinct rows from both queries and removes duplicate rows from the result.
 
 SELECT
 FirstName,
@@ -512,3 +515,258 @@ SELECT
 FirstName,
 LastName
 FROM Sales.Employees
+
+-- TASK
+-- Combine the data from employees and customers into one table.
+
+SELECT 
+	FirstName,
+	LastName
+FROM Sales.Customers
+UNION
+SELECT 
+	FirstName,
+	LastName
+FROM Sales.Employees
+
+-- 2. UNION ALL -> Returns all rows from both queries including duplicates.
+-- Combine the data from employees and customers into one table, including duplicates.
+
+SELECT 
+	FirstName,
+	LastName
+FROM Sales.Customers
+UNION ALL
+SELECT 
+	FirstName,
+	LastName
+FROM Sales.Employees
+
+-- 3. EXCEPT -> Returns all distinct rows from the first query that are not found in the second query.
+-- Find employees who are not customers at the same time.
+
+SELECT 
+	FirstName,
+	LastName
+FROM Sales.Employees
+EXCEPT
+SELECT 
+	FirstName,
+	LastName
+FROM Sales.Customers
+
+-- 4. INTERSECT -> Returns ONLY the rows that are common in both queries.
+-- Find employees who are also customers.
+
+SELECT 
+	FirstName,
+	LastName
+FROM Sales.Employees
+INTERSECT
+SELECT 
+	FirstName,
+	LastName
+FROM Sales.Customers
+
+/*
+	TASK
+	=> Orders are stored in separate tables
+	(Orders and OrdersArchive).
+	Combine all orders into one report without duplicates
+*/
+
+-- SOLUTION
+SELECT 
+'Orders' AS SourceTable,
+	OrderID,
+	ProductID,
+	CustomerID,
+	SalesPersonID,
+	OrderDate,
+	ShipDate,
+	OrderStatus,
+	ShipAddress,
+	BillAddress,
+	Quantity,
+	Sales,
+	CreationTime
+FROM Sales.Orders
+UNION 
+SELECT 
+'OrdersArchive' AS SourceTable,
+	OrderID,
+	ProductID,
+	CustomerID,
+	SalesPersonID,
+	OrderDate,
+	ShipDate,
+	OrderStatus,
+	ShipAddress,
+	BillAddress,
+	Quantity,
+	Sales,
+	CreationTime
+FROM Sales.OrdersArchive
+ORDER BY OrderID
+
+
+/*
+
+	SQL FUNCTIONS
+	-> They are built-in functions that accepts an input
+	   value, process it, and returns an output 
+	   value
+
+	TYPES OF SQL FUNCTIONS:
+
+	1. ROW-LEVEL FUNCTIONS
+	2. AGGREGATION & ANALYTICAL FUNCTIONS
+
+
+	1. ROW-LEVEL FUNCTIONS ->
+		* String Func
+		* Number Func
+		* Date & Time Func
+		* Null Func
+		* Case Statement
+
+*/
+
+-- * String Func
+
+-- CONCAT -> Combines multiple strings into one
+
+-- TASK
+
+-- Concatenate first name and country into one column
+
+SELECT 
+first_name,
+country,
+CONCAT(first_name, ' ', country) AS Name_Country
+FROM customers
+
+-- LOWER & UPPER -> Converts all characters to upper and vice-versa
+
+-- TASK 
+-- Convert the first names of customers to lowercase
+
+SELECT
+first_name,
+LOWER(first_name) AS LowerName,
+country
+FROM customers
+
+-- TASK 
+-- Convert the first names of customers to uppercase
+
+SELECT
+first_name,
+UPPER(first_name) AS UpperName,
+country
+FROM customers
+
+-- TRIM -> Removes leading and trailing spaces
+-- TASK
+-- Find customers whose first name contains leading or trailing spaces
+
+SELECT 
+first_name
+FROM customers
+WHERE first_name != TRIM(first_name)
+
+-- You can also solve the same problem by finding the length of the names
+
+SELECT 
+first_name,
+LEN(first_name) AS Len_Names,
+LEN(TRIM(first_name)) AS TrimmedNamesLen
+FROM customers
+
+
+-- REPLACE -> Replace specific character with a new character
+
+-- TASK
+-- Remove dashes (-) from a phone number
+
+SELECT
+'123-456-7890' 'PHONE_NO', 
+REPLACE('123-456-7890', '-', '/') AS clean_phone
+
+-- Replace File Existence from txt to csv
+
+SELECT
+'report.txt' old_filename,
+REPLACE('report.txt', '.txt', '.csv') new_filename
+
+
+-- LEN -> Counts how many characters you have in a value
+
+-- TASK
+-- Calculate the length of each customer's name
+
+SELECT 
+first_name,
+Len(first_name) len_first_name
+FROM customers
+
+-- LEFT & RIGHT -> Left extracts specific number of characters from the start and right does the opposite
+
+-- TASK
+-- Retrieve the first two characters of each first name
+
+SELECT
+first_name,
+LEFT(TRIM(first_name), 2) first_2_char
+FROM customers
+
+-- TASK
+-- Retrieve the LAST two characters of each first name
+
+SELECT
+first_name,
+RIGHT(TRIM(first_name), 2) first_2_char
+FROM customers
+
+
+-- SUBSTRING -> Extracts a part of a string at a specified position
+
+-- TASK
+-- Retrieve a list of customers first names removing the first character
+
+SELECT
+first_name,
+SUBSTRING(TRIM(first_name), 2, LEN(first_name)) removed_1st_char
+FROM customers
+
+
+
+-- * Number Func
+
+-- ROUND 
+
+SELECT
+3.516 'number',
+ROUND(3.516, 2) AS round_2dp,
+ROUND(3.516, 1) AS round_1dp,
+ROUND(3.516, 0) AS round_0dp
+
+-- ABS -> Converts any -ve no to a +ve number
+
+SELECT
+-10 'number',
+ABS(-10) negative_no,
+ABS(10) positive_no
+
+
+
+
+-- * Date & Time Func 5:22:41
+
+
+
+
+
+
+
+
