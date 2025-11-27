@@ -1,0 +1,514 @@
+USE MyDatabase;
+
+-- Retrieve All customer data
+SELECT 
+*
+FROM customers;
+
+GO
+
+-- Retrieve All order data
+
+SELECT *
+FROM orders;
+
+-- Retrieve EACH customer name, country, and score
+
+SELECT
+	first_name,
+	country,
+	score
+FROM customers;
+
+-- Retrieve all customers with scores of 500 and above.
+SELECT *
+FROM customers
+WHERE score >= 500;
+
+
+-- Retrieve all customers from Germany
+
+SELECT * 
+FROM customers
+WHERE country = 'Germany';
+
+-- Retrieve all customers in ascending order of there scores and are from Germany.
+
+SELECT *
+FROM customers
+WHERE country = 'Germany'
+ORDER BY score ASC;
+
+-- Retrieve all customers and sort the results by the highest score first
+
+SELECT *
+FROM customers
+ORDER BY score DESC;
+
+-- Retrieve all customers and sort the results y the country and then by the highest score
+
+SELECT *
+FROM customers
+ORDER BY country ASC,
+ 	score DESC;
+
+GO
+
+-- Find the total score for each country.
+
+SELECT 
+country,
+SUM(score) AS total_score
+FROM customers
+GROUP BY country;
+
+-- Find the total score and total number of customers for each country
+
+SELECT 
+	country,
+	SUM(score),
+	COUNT(id) AS total_customers
+FROM customers
+GROUP BY country;
+	
+-- Find the average score for each country considering only customers with a score not equal to 0
+
+SELECT 
+	country,
+	AVG(score) AS avg_score
+FROM customers
+where score != 0
+GROUP BY country;
+
+
+
+/* Find the average score for each country
+	considering only customers with a score not equal to 0
+	and return only those with an average score greater than 430
+*/
+
+SELECT 
+	country,
+	AVG(score) AS total_score
+FROM customers
+WHERE score != 0
+GROUP BY country
+HAVING AVG(score) > 430;
+
+-- Return unique list of all countries.
+
+SELECT DISTINCT
+	country
+FROM customers;
+
+-- Retrieve the Top 3 customers.
+SELECT TOP 3 *	
+FROM customers;
+
+-- Retrieve the Top 3 customers with the highest score
+
+SELECT TOP 3 *
+FROM customers
+ORDER BY score DESC;
+
+
+
+-- Data Definition Language DDL
+
+/*
+	CREATE, ALTER & DROP
+*/
+
+-- Create a new table called persons with columns: id, person_name, birth_date, and phone.
+
+CREATE TABLE persons (
+id INT NOT NULL,
+person_name VARCHAR(50) NOT NULL,
+birth_date DATE,
+phone VARCHAR(15) NOT NULL
+CONSTRAINT pk_persons PRIMARY KEY (id)
+)
+
+-- Add a new column called email to the persons table
+
+ALTER TABLE persons 
+ADD	email VARCHAR(50) NOT NULL
+
+-- Remove the column phone from the persons table
+
+ALTER TABLE persons
+DROP COLUMN phone
+
+-- Delete the table persons from the database.
+
+DROP TABLE persons
+
+
+
+-- DATA MANIPULATION LANGUAGE DML
+
+/*
+	INSERT, UPDATE & DELETE
+*/
+
+
+INSERT INTO customers (id, first_name, country, score)
+VALUES 
+	(6, 'Anna', 'Kenya', NULL),
+	(7, 'Anna', NULL, 100)
+
+SELECT * FROM customers
+
+-- Change the name Sam in id 6 to Anna.
+
+UPDATE customers
+SET first_name = 'Anna'
+WHERE id = 6
+
+-- Count all the number of customers we have in the table customers.
+
+SELECT 
+COUNT (*) FROM customers
+
+-- Copy data from 'customers' table into 'persons'
+
+INSERT INTO persons (id, person_name, birth_date, phone)
+SELECT 
+id, 
+first_name AS  person_name,
+NULL,
+'Unknown'
+FROM customers
+
+-- Change the score of customer 7 to 0 and update the country to UK.
+
+UPDATE customers
+SET score = 0,
+	country = 'UK'
+WHERE id = 7
+
+-- Update all customers with a NULL score by setting their score to 0
+
+UPDATE customers
+SET score = 0
+WHERE score IS NULL
+
+
+-- Delete all customers with an ID greater than 5
+
+DELETE FROM customers
+WHERE id > 5
+
+select * from customers
+
+-- Delete all from table persons
+
+SELECT * FROM persons
+
+DELETE FROM persons
+
+
+
+
+/*
+
+FILTERING DATA USING 'WHERE'
+1. COMPARISON OPERATORS: =, <>, =!, >, >=, <, <=
+2. LOGICAL OPERATORS: AND, OR NOT
+3. RANGE OPERATOR: BETWEEN
+4. MEMBERSHIP OPERATOR: IN, NOT IN
+5. SEARCH OPERATOR: LIKE
+2:09:24
+*/
+
+-- 1. COMPARISON OPERATOR
+
+-- Retrieve all customers from Germany. =
+SELECT *
+FROM customers
+WHERE country = 'Germany'
+
+-- Retrieve all customers who are not from Germany. != or <>
+SELECT *
+FROM customers
+WHERE country != 'Germany'
+
+-- Retrieve all customers with a score greater than 500. >
+SELECT *
+FROM customers
+WHERE score > 500
+
+-- Retrieve all customers with a score of 500 or more. >=
+SELECT *
+FROM customers
+WHERE score >= 500
+
+
+-- 2. LOGICAL OPERATOR -> AND, OR, NOT
+
+-- Retrieve all customers who are from the USA AND  have a score greater than 500. AND
+SELECT *
+FROM customers
+WHERE country = 'USA' AND score > 500
+
+
+-- Retrieve all customers who are either from the USA OR  have a score greater than 500. OR
+SELECT *
+FROM customers
+WHERE country = 'USA' OR score > 500
+
+-- Retrieve all customers with a score NOT less than 500. NOT
+SELECT *
+FROM customers
+WHERE NOT score < 500
+
+
+
+-- 2. RANGE OPERATOR -> BETWEEN
+
+-- Retrieve all customers whose score falls in the range between 100 and 500
+SELECT *
+FROM customers
+WHERE score BETWEEN 100 AND 500
+
+
+-- 2. RANGE OPERATOR -> IN, NOT IN
+
+-- Retrieve all customers from either Germany OR USA.
+
+SELECT *
+FROM customers
+WHERE country IN ('Germany', 'USA')
+
+-- Retrieve all customers who are not from either Germany OR USA.
+SELECT *
+FROM customers
+WHERE country NOT IN ('Germany', 'USA')
+
+
+-- 3. SEARCH OPERATOR -> LIKE
+
+-- Find all customers whose first name starts with 'M'
+
+SELECT *
+FROM customers
+WHERE first_name LIKE 'M%'
+
+-- Find all customers whose first name ends with 'n'
+
+SELECT *
+FROM customers
+WHERE first_name LIKE '%n'
+
+
+-- Find all customers whose first name contains 'r'
+
+SELECT *
+FROM customers
+WHERE first_name LIKE '%r%'
+
+
+-- Find all customers whose first name has 'r' in the third position
+
+SELECT *
+FROM customers
+WHERE first_name LIKE '__r%'
+
+
+/*
+	COMBINING DATA FROM MULTIPLE TABLES: JOINS & SET OPERATORS
+
+	SQL JOINS
+	1. INNER JOIN
+	2. LEFT JOIN
+	3. RIGHT JOIN
+	4. FULL JOIN
+	
+	ADVANCED CONCEPTS
+
+	5. LEFT ANTI JOIN
+	6. RIGHT ANTI JOIN
+	7. FULL ANTI JOIN 
+	8. CROSS JOIN
+*/
+
+
+-- Retrieve all data from customers and orders as separate results
+
+SELECT TOP(2) * 
+FROM customers
+
+SELECT TOP(2) * 
+FROM orders
+
+-- 1. INNER JOIN -> Returns only the matching data from both tables
+
+-- Get all customers along with their orders, but only for customers who have placed an order.
+
+SELECT 
+	c.id,
+	c.first_name,
+	c.country,
+	c.score,
+	o.order_id,
+	o.order_date,
+	o.sales
+FROM customers AS c
+INNER JOIN orders AS o
+ON id = customer_id;
+
+
+-- 2. LEFT JOIN -> Returns all rows from left and only matching from right.
+
+-- Get all customers along with their orders, including those without orders.
+
+SELECT 
+c.id,
+c.first_name,
+c.country,
+c.score,
+o.order_id,
+o.order_date,
+o.sales
+FROM customers AS c
+LEFT JOIN orders AS o
+ON id = customer_id
+
+-- 3. RIGHT JOIN -> Returns all rows from right and only matching from left.
+
+-- Get all customers along with their orders, including orders without matching customers.
+
+SELECT *
+FROM customers
+RIGHT JOIN orders
+ON id = customer_id
+
+
+-- 4. FULL JOIN -> Returns all rows from BOTH tables.
+
+-- Get all customers and all orders, even if there's no match
+
+SELECT *
+FROM customers
+FULL JOIN orders
+ON id = customer_id
+
+
+-- ADVANCED JOINS
+
+-- 1. LEFT ANTI JOIN -> Returns rows from left that has no match in right
+
+-- Get all customers who haven't placed any order.
+
+SELECT *
+FROM customers
+LEFT JOIN orders
+ON id = customer_id
+WHERE customer_id IS NULL
+
+-- 2. FULL ANTI JOIN -> Returns ONLY rows that don't match in either tables
+
+-- Find customers without orders and orders without customers.
+
+SELECT *
+FROM customers
+FULL JOIN orders
+ON id = customer_id
+WHERE id IS NULL OR customer_id IS NULL
+
+/*
+	CHALLENGE
+	Get all customers along with their orders, but only for customers 
+	who have placed an order without using INNER JOIN
+
+*/
+
+SELECT * 
+FROM customers
+LEFT JOIN orders
+ON id = customer_id
+WHERE customer_id IS NOT NULL
+
+
+-- 3. CROSS JOIN -> Combines every row from left with every row from right. All possible combinations (Cartesian Join)
+				
+
+-- Generate all possible combinations of customers and orders.
+
+SELECT * 
+FROM customers
+CROSS JOIN orders
+
+
+-- CHALLENGE
+/*
+-- Using the SalesDB, retrieve a list of all orders, along with the related customer, product, and employee details.
+	For each order, display:
+		1.Order ID
+		2.Customer Name
+		3.Product Name
+		4.Sales
+		5.Price
+		6.Sales Person Name
+*/
+-- SOLUTION
+
+USE SalesDB
+
+SELECT *
+FROM Sales.Orders
+
+SELECT *
+FROM Sales.Customers
+
+SELECT *
+FROM Sales.Products
+
+SELECT *
+FROM Sales.Employees
+
+SELECT 
+	O.OrderID,
+	O.Sales,
+	C.FirstName AS CustomerName,
+	P.Product,
+	P.Price,
+	E.FirstName AS SalesPerson
+FROM Sales.Orders AS O
+LEFT JOIN Sales.Customers AS C
+ON O.CustomerID = C.CustomerID
+LEFT JOIN Sales.Products AS P
+ON O.ProductID = P.ProductID
+LEFT JOIN Sales.Employees AS E
+ON O.SalesPersonID = E.EmployeeID
+
+
+
+/* 
+	SET OPERATORS -> Combining Rows
+
+	TYPES
+	1. UNION
+	2. UNION ALL
+	3. EXCEPT (Minus)
+	4. INTERSECT
+
+	NB: NO.of columns has to be the same
+		The data types of each column in each query must match
+		Have the same number of columns and in the same order
+
+*/
+
+-- EXAMPLE
+
+-- 1. UNION
+
+SELECT
+FirstName,
+LastName
+FROM Sales.Customers
+UNION
+SELECT
+FirstName,
+LastName
+FROM Sales.Employees
