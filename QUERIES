@@ -761,12 +761,75 @@ ABS(10) positive_no
 
 
 
--- * Date & Time Func 5:22:41
+-- * Date & Time Func 
 
+SELECT 
+OrderId,
+CreationTime, 
+'2025-08-20' HardCoded,
+GETDATE() Today
+FROM Sales.Orders
 
+/*
+	GetDate Function -> Returns the current date and time at the moment
+	when the query is executed.
 
+	Date & Time functions include:
+	1. DAY	-> Returns the day from a date: DAY(date)
+	2. MONTH	-> Returns the month from a date: MONTH(date)
+	3. YEAR	-> Returns the year from a date: YEAR(date)
+	4. DATEPART -> returns specific part of the date as a number.
+	5. DATENAME -> returns the name of a specific part of a date.
+	6. DATETRUNC -> Truncates the date to the specific part.
+	7. EOMONTH -> returns the last day of a month.
+	8. FORMAT
+	9. CONVERT
+	10. CAST ->
+	11. DATEADD
+	12. DATEDIFF
+	13. ISDATE
+*/ 
 
+SELECT 
+OrderId,
+CreationTime, 
+YEAR(CreationTime) Year,
+MONTH(CreationTime) Month,
+DAY(CreationTime) Day,
+DATEPART(year, CreationTime) datepart_year,
+DATEPART(month, CreationTime) datepart_month,
+DATEPART(day, CreationTime) datepart_day,
+DATEPART(hour, CreationTime) datepart_hour,
+DATEPART(week, CreationTime) datepart_week,
+DATENAME(month, CreationTime) datename_month,
+DATENAME(weekday, CreationTime) datename_weekday,
+DATETRUNC(minute, CreationTime) datetrunc_minute,
+-- DATETRUNC Examples
+DATETRUNC(hour, CreationTime) datetrunc_hour,
+DATETRUNC(day, CreationTime) datetrunc_day,
+DATETRUNC(year, CreationTime) datetrunc_year,
+-- EOMONTH Example
+EOMONTH(CreationTime) endOfMonth,
+-- CAST Example
+CAST(DATETRUNC(month, CreationTime) AS DATE) startOfMonth
+FROM Sales.Orders
 
+-- TASK
+-- Show the number of orders which were made in each month
 
+SELECT
+DATETRUNC(month, CreationTime),
+COUNT(*)
+FROM Sales.Orders
+GROUP BY DATETRUNC(month, CreationTime)
+
+-- TASK
+-- How many orders were placed each year?
+
+SELECT
+YEAR(OrderDate) year,
+COUNT(*) noOfOrders
+FROM Sales.Orders
+GROUP BY OrderDate --5:58:36
 
 
