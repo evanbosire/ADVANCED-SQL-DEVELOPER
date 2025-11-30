@@ -782,12 +782,12 @@ FROM Sales.Orders
 	5. DATENAME -> returns the name of a specific part of a date.
 	6. DATETRUNC -> Truncates the date to the specific part.
 	7. EOMONTH -> returns the last day of a month.
-	8. FORMAT
-	9. CONVERT
-	10. CAST ->
-	11. DATEADD
-	12. DATEDIFF
-	13. ISDATE
+	8. FORMAT -> Changing the format of a value from one to another. Changing how the data looks like.
+	9. CONVERT -> Converts a date or time value to a different data type.
+	10. CAST -> changing the data type from one to another.
+	11. DATEADD -> Adds or subtracts a specific time interval to/from a date.
+	12. DATEDIFF -> Find the differences between two dates.
+	13. ISDATE -> Check if a value is a date. Returns 1 if the string value is a valid date.
 */ 
 
 SELECT 
@@ -830,6 +830,351 @@ SELECT
 YEAR(OrderDate) year,
 COUNT(*) noOfOrders
 FROM Sales.Orders
-GROUP BY OrderDate --5:58:36
+GROUP BY YEAR(OrderDate)
+
+-- TASK
+-- How many orders were placed each month?
+
+SELECT
+DATENAME(month, OrderDate) Month,
+COUNT(*) NoOfOrders
+FROM Sales.Orders
+GROUP BY DATENAME(month, OrderDate)
+
+-- Show all the orders that were placed during the month of february
+
+SELECT
+*
+FROM Sales.Orders
+WHERE MONTH(OrderDate) = 2
+
+-- FORMAT()
+
+SELECT
+OrderID,
+CreationTime,
+FORMAT(CreationTime, 'dd') dd,
+FORMAT(CreationTime, 'ddd') ddd,
+FORMAT(CreationTime, 'dddd') dddd,
+FORMAT(CreationTime, 'MM') MM,
+FORMAT(CreationTime, 'MMM') MMM,
+FORMAT(CreationTime, 'MMMM') MMMM,
+-- EUROPE FORMAT
+FORMAT(CreationTime, 'dd-MMM-yyyy') Europe_Format
+FROM Sales.Orders
+
+-- TASK
+-- Show CreationTime using the following format: Day Wed Jan Q1 2025 12:34:56 PM
+
+
+-- SOLUTION
+SELECT
+CreationTime,
+FORMAT(CreationTime, 'dd') +' ' + 
+FORMAT(CreationTime, 'ddd') +' ' + 
+FORMAT(CreationTime, 'MMM') +' ' + 
+'Q1' +' ' + 
+FORMAT(CreationTime, 'yyyy') +' ' + 
+FORMAT(CreationTime, 'hh:mm:ss: tt') Custom_Format
+FROM Sales.Orders
+
+-- CONVERT()
+
+ SELECT
+	 CONVERT(INT, '123') AS [String to Int CONVERT],
+	 CONVERT(DATE, '2025-08-20') AS [String to DATE CONVERT],
+	 CreationTime,
+	 CONVERT(DATE, CreationTime) AS [Datetime to Date CONVERT]
+ FROM Sales.Orders
+
+
+ --  DATEADD ->
+
+ SELECT 
+ OrderID,
+ OrderDate,
+ -- year
+ DATEADD(year, 2, OrderDate) added_2yrs,
+ DATEADD(year, -5, OrderDate) subtracted_5yrs,
+ -- months
+ DATEADD(month, 3, OrderDate) added_3months,
+ DATEADD(month, -1, OrderDate) subtracted_1month,
+ -- date
+ DATEADD(day, 2, OrderDate) added_2days,
+ DATEADD(day, -5, OrderDate) subtracted_5days
+ FROM Sales.Orders
+
+
+ -- DATEDIFF()
+ -- TASK
+
+ -- Calculate the age of employees
+
+ SELECT 
+ EmployeeID,
+ FirstName,
+ BirthDate,
+ DATEDIFF(year, BirthDate, GETDATE()) AS Age
+ FROM Sales.Employees
+
+
+  -- TASK
+
+ -- Find the average shipping duration in days for each month
+
+ SELECT 
+ MONTH(OrderDate)AS OrderDate,
+ AVG(DATEDIFF(day, OrderDate, ShipDate)) AvgShip
+ FROM Sales.Orders
+ GROUP BY  MONTH(OrderDate)
+
+
+ -- ISDATE()
+
+ SELECT 
+ ISDATE('123') DateCheck1,
+ ISDATE('2025-08-20') DateCheck2,
+
+
+ /*
+ 
+	NULL FUNCTIONS
+	-> NULL means nothing, unknown!
+	
+	FUNCTIONS TO HANDLE NULL:
+	1. ISNULL -> Replaces 'NULL' with a specified value
+	2. COALESCE -> Used to replace NULL with something, can be a 0 or a string
+	3. NULLIF -> Compares two expressions returns: NULL, if they are equal, FIRST VALUE, if they are not equal
+	4. IS NULL -> returns true if the value is null otherwise false
+	5. IS NOT NULL -> returns truw if the value is not null
+ 
+ */
+
+ -- 2. COALESCE
+ -- Find the average scores of the customers
+
+SELECT
+CustomerID,
+Score,
+COALESCE(Score, 0) Score2, -- ->This replaces the NULL with a 0
+AVG(Score) OVER () AvgScore,
+AVG(COALESCE(Score, 0)) OVER () AvgScore2
+FROM Sales.Customers
+
+-- Display the full name of customers in a single field
+-- by merging their first and last names,
+-- and add 10 bonus points to each customer's score.
+
+-- SOLUTION
+
+SELECT *
+FROM Sales.Customers
+
+
+SELECT
+CustomerID,
+FirstName + ' ' + COALESCE(LastName, '') AS FullName,
+Score,
+COALESCE(Score, 0) + 10 ScoreBonus
+FROM Sales.Customers
+
+
+-- 3. NULLIF(value1, value2) -> Commonly used to prevent dividing by a zero
+
+-- Find the sales price for each order by dividing sales by quantity
+
+SELECT
+OrderID, 
+Sales,
+Quantity,
+Sales /NULLIF(Quantity, 0) sales_price -- we NULLIF to make quantity 0 so that we can do the division since you can't divide by a 0
+FROM Sales.Orders
+
+
+-- 4. IS NULL ->
+
+-- Identify the customers who have no scores
+
+SELECT
+CustomerID,
+FirstName,
+Score
+FROM Sales.Customers
+WHERE Score IS NULL
+
+-- List all customers who have scores
+
+SELECT
+*
+FROM Sales.Customers
+WHERE Score IS NOT NULL
+
+-- USE CASE FOR IS NULL & IS NOT NULL
+
+-- List all details for customers who have not placed any orders
+
+SELECT *
+FROM Sales.Customers
+
+SELECT *
+FROM Sales.Orders
+
+SELECT *
+FROM Sales.Customers AS C
+LEFT JOIN Sales.Orders AS O
+ON C.CustomerID = O.CustomerID
+WHERE OrderID IS NULL
+
+
+
+/*
+
+	CASE STATEMENT
+	-> Evaluates a list of conditions and returns a value
+	   when the first condition is met.
+
+	   syntax:
+	   CASE
+
+		WHEN ... THEN
+		WHEN ... THEN
+		...
+
+		ELSE result
+
+	   END
+
+
+
+	USE CASE:
+	1. Main purpose is Data Transformations to derive new information without modifying the source infoin the DB.
+
+
+*/
+
+-- TASK
+
+-- Generate a report showing the total sales for each category:
+-- High: if the sales higher than 50
+-- Medium: if the sales between 20 and 50
+-- Low: if the sales equal or lower than 20
+-- Sort the result from lowest to highest.
+
+-- SOLUTION
+
+SELECT
+Category,
+SUM(Sales) AS TotalSales
+FROM(
+	SELECT
+	OrderID,
+	Sales,
+	CASE 
+		WHEN Sales > 50 THEN 'High'
+		WHEN Sales > 20 THEN 'Medium'
+
+		ELSE 'Low'
+	END Category
+	FROM Sales.Orders
+)t
+GROUP BY Category
+ORDER BY TotalSales DESC
+
+
+-- Retrieve employee details with gender displayed as full text
+
+SELECT 
+EmployeeID,
+FirstName,
+Gender,
+CASE
+	WHEN Gender = 'M' THEN'Male'
+	ELSE 'Female'
+END full_gender
+FROM Sales.Employees
+
+
+/*
+
+	AGGREGATION & ANALYTICAL FUNCTIONS
+
+	* Aggregate Functions
+
+
+
+*/
+
+-- Find the total number of customers: COUNT()
+
+SELECT
+COUNT(*) total_orders
+FROM orders
+
+-- Find the total sales of all orders: SUM()
+
+SELECT
+SUM(Sales) total_sales
+FROM orders
+
+-- Find the average sales of all orders: AVG()
+
+SELECT
+AVG(Sales) average_sales
+FROM orders
+
+-- Find the highest sales of all orders: MAX()
+
+SELECT
+MAX(Sales) highest_sales
+FROM orders
+
+-- Find the lowest sales of all orders: MIN()
+
+SELECT
+MIN(Sales) lowest_sales
+FROM orders
+
+
+
+/*
+
+	WINDOW FUNCTIONS
+	- Perform calculations e.g aggregations on a specific subset
+	  of data, without losing the level of details of rows.
+
+*/
+
+
+-- Find the total Sales for each product, additionally provide details such 
+-- as order id & order date
+
+SELECT 
+ProductID,
+Sales,
+SUM(Sales) OVER(PARTITION BY ProductID) total_sales_by_products
+FROM Sales.Orders
+
+-- Rank each order based on their sales from highest to lowest,
+-- additionally provide details such as order id & order date
+
+SELECT
+OrderID,
+OrderDate,
+Sales,
+RANK() OVER (ORDER BY Sales DESC) RankSales
+FROM Sales.Orders
+
+-- 9:26:40
+
+
+
+
+
+
+
+
+
+
+
 
 
