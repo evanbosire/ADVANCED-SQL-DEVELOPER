@@ -933,7 +933,7 @@ FROM Sales.Orders
 
  SELECT 
  ISDATE('123') DateCheck1,
- ISDATE('2025-08-20') DateCheck2,
+ ISDATE('2025-08-20') DateCheck2;
 
 
  /*
@@ -954,11 +954,11 @@ FROM Sales.Orders
  -- Find the average scores of the customers
 
 SELECT
-CustomerID,
-Score,
-COALESCE(Score, 0) Score2, -- ->This replaces the NULL with a 0
-AVG(Score) OVER () AvgScore,
-AVG(COALESCE(Score, 0)) OVER () AvgScore2
+	CustomerID,
+	Score,
+	COALESCE(Score, 0) Score2, -- ->This replaces the NULL with a 0
+	AVG(Score) OVER () AvgScore,
+	AVG(COALESCE(Score, 0)) OVER () AvgScore2
 FROM Sales.Customers
 
 -- Display the full name of customers in a single field
@@ -1164,17 +1164,874 @@ Sales,
 RANK() OVER (ORDER BY Sales DESC) RankSales
 FROM Sales.Orders
 
--- 9:26:40
+-- 9:26:40 -> UPTO SUBQUERIES.
 
 
 
 
 
 
+/*
+
+	CTE (COMMON TABLE EXPRESSION)
+	- Temporary, named result set (virtual table)
+	  that can be used multiple times within 
+	  your query to simplify and organize complex
+	  query
+
+	TYPES OF CTE:
+	a. Non-Recursive CTE
+	b. Recursive CTE
+
+	a. Non-Recursive CTE
+	   - It is only executed only once without any repetition
+	TYPES:
+		1. STANDALONE -> Defined and used independently 
+						 in the query.
+
+						 SYNTAX:
+
+						 ;WITH CTE-Name AS
+						 (
+							SELECT ...
+							FROM ...
+							WHERE ...
+						 )
+		2. NESTED CTE -> CTE inside another CTE
+		
+						SYNTAX:
+
+						 ;WITH CTE-Name1 AS
+						 (
+							SELECT ...
+							FROM ...
+							WHERE ...
+						 )
+						  ,CTE-Name2 AS
+						 (
+							SELECT ...
+							FROM CTE-Name1 
+							WHERE ...
+						 )
+
+						 -- Main Query
+						 SELECT ...
+						 FROM CTE-Name2 
+						 WHERE ...
+
+	b. Recursive CTE
+	   - Self-referencing query that repeatedly
+	     processes data until a specific condition is
+		 met
+
+		 SYNTAX:
+
+		 ;WITH CTE-Name AS
+						 (
+							SELECT ...
+							FROM ...
+							WHERE ...
+						 
+							UNION ALL
+						 
+							SELECT ...
+							FROM CTE-Name
+							WHERE [Break Condition]
+						 )
 
 
 
 
+	Examples:
+*/
+
+-- Step1: Find the total Sales Per Customer
+
+;WITH CTE_Total_Sales AS
+(
+SELECT
+	CustomerID,
+	SUM(Sales) AS TotalSales
+FROM Sales.Orders
+GROUP BY CustomerID
+)
+-- Step2: Find the last order date per customer
+, CTE_Last_Order AS 
+(
+SELECT
+	CustomerID,
+	MAX(OrderDate) AS Last_Order
+FROM Sales.Orders
+GROUP BY CustomerID
+)
+-- Step3: Rank Customers based on total sales per customer.
+, CTE_Customer_Rank AS 
+(
+SELECT
+CustomerID,
+TotalSales,
+RANK () OVER (ORDER BY TotalSales DESC) AS CustomerRank
+FROM CTE_Total_Sales
+
+)
+-- Step4: Segment customers based on their total sales.
+, CTE_Customer_Segment AS 
+(
+SELECT
+CustomerID,
+TotalSales,
+CASE WHEN TotalSales > 100 THEN 'High'
+	 WHEN TotalSales > 80 THEN 'Medium'
+	 ELSE 'Low'
+END CustomerSegments
+FROM CTE_Total_Sales
+)
+-- Main Query
+SELECT
+c.CustomerID,
+c.FirstName,
+c.LastName,
+cts.TotalSales,
+clo.Last_Order,
+ccr.CustomerRank,
+ccs.CustomerSegments
+FROM Sales.Customers c
+LEFT JOIN CTE_Total_Sales cts
+ON cts.CustomerID = c.CustomerID
+LEFT JOIN CTE_Last_Order clo
+ON clo.CustomerID = c.CustomerID
+LEFT JOIN CTE_Customer_Rank ccr
+ON ccr.CustomerID = c.CustomerID
+LEFT JOIN CTE_Customer_Segment ccs
+ON ccs.CustomerID = c.CustomerID
+
+
+-- Recursive CTE Examples
+-- 1. Generate a sequence of numbers from 1 to 20
+
+-- SOLUTION
+
+;WITH Series AS 
+(
+	-- Anchor Query
+	SELECT
+	1 AS MyNumber
+	UNION ALL
+	-- Recursive Query
+	SELECT
+	MyNumber + 1
+	FROM Series
+	WHERE MyNumber < 20
+)
+-- Main Query
+SELECT *
+FROM Series
+OPTION (MAXRECURSION 100) -- Specifies the no. of iterations b4 the loop breaks
+
+
+-- 2. Show the employee hierachy by displaying each employee's level within the organization
+
+;WITH CTE_Emp_Hierachy AS
+(
+	-- Anchor Query
+	SELECT
+		EmployeeID,
+		FirstName,
+		ManagerID,
+		1 AS Level
+	FROM Sales.Employees
+	WHERE ManagerID IS NULL
+
+	UNION ALL
+
+	-- Recursive Query
+	SELECT
+		e.EmployeeID,
+		e.FirstName,
+		e.ManagerID,
+		Level + 1
+	FROM Sales.Employees AS e
+	INNER JOIN CTE_Emp_Hierachy ceh
+	ON e.ManagerID = ceh.EmployeeID
+)
+
+-- Main Query
+SELECT
+*
+FROM CTE_Emp_Hierachy
 
 
 
+/*
+	VIEWS
+	- Is a virtual table that shows data without storing
+	  it physically.
+	- Views are persisted SQL queries in the db
+
+	SYNTAX:
+
+	CREATE VIEW VIEW-NAME AS
+	(
+		SELECT ...
+		FROM ...
+		WHERE ...
+	)
+
+*/
+
+-- Find the running total of sales for each month
+
+;WITH CTE_Monthly_Summary AS
+(
+SELECT 
+    MONTH(OrderDate) AS OrderMonth,
+    SUM(Sales) AS TotalSalesEachMonth,
+	COUNT(OrderID) TotalOrders,
+	SUM(Quantity) TotalQuantities
+FROM Sales.Orders
+GROUP BY MONTH(OrderDate)
+) 
+SELECT
+OrderMonth,
+TotalSalesEachMonth,
+SUM(TotalSalesEachMonth) OVER(ORDER BY OrderMonth) TotalRunningSales
+FROM CTE_Monthly_Summary
+
+
+-- Creating a view
+
+CREATE VIEW Sales.V_MonthlySummary AS
+(
+SELECT 
+    MONTH(OrderDate) AS OrderMonth,
+    SUM(Sales) AS TotalSalesEachMonth,
+	COUNT(OrderID) TotalOrders,
+	SUM(Quantity) TotalQuantities
+FROM Sales.Orders
+GROUP BY MONTH(OrderDate)
+)
+
+-- Query From The View
+
+SELECT *
+FROM Sales.V_MonthlySummary
+
+
+-- Lets create a view to the default schema dbo and try to drop it
+
+CREATE VIEW V_Monthly_Summary AS
+(
+SELECT 
+    MONTH(OrderDate) AS OrderMonth,
+    SUM(Sales) AS TotalSalesEachMonth,
+	COUNT(OrderID) TotalOrders,
+	SUM(Quantity) TotalQuantities
+FROM Sales.Orders
+GROUP BY MONTH(OrderDate)
+);
+
+-- Dropping the view
+
+DROP VIEW V_Monthly_Summary
+
+
+-- Updating the view (we can use the Transact-SQL TO drop and re-create the view) T-SQL
+
+IF OBJECT_ID('Sales.V_MonthlySummary', 'V') IS NOT NULL
+	DROP VIEW Sales.V_MonthlySummary
+GO
+
+CREATE VIEW Sales.V_MonthlySummary AS
+(
+SELECT 
+    MONTH(OrderDate) AS OrderMonth,
+    SUM(Sales) AS TotalSalesEachMonth,
+	COUNT(OrderID) TotalOrdersU,
+	SUM(Quantity) TotalQuantities
+FROM Sales.Orders
+GROUP BY MONTH(OrderDate)
+);
+
+SELECT *
+FROM Sales.V_MonthlySummary
+
+
+/*
+	USE CASE OF VIEWS
+	1. HIDE COMPLEXITY, Protect data before sharing with other users.
+
+		EXAMPLE BELOW.
+*/
+
+-- Provide a view that combines details from orders, products, customers, and employees
+
+IF OBJECT_ID ('Sales.V_Sales_Summary_Details', 'V') IS NOT NULL
+	DROP VIEW Sales.V_Sales_Summary_Details
+GO
+
+CREATE VIEW Sales.V_Sales_Summary_Details AS
+(
+SELECT 
+O.[OrderID],
+O.[ProductID],
+O.[CustomerID],
+O.[SalesPersonID],
+O.[OrderDate],
+O.[Quantity],
+O.[Sales],
+P.[Product],
+P.[Category],
+P.[Price],
+COALESCE(C.FirstName, '') + ' ' + COALESCE(C.LastName, '') AS CustomerName,
+C.Country,
+C.Score,
+COALESCE(E.FirstName, '')+ ' ' + COALESCE(E.LastName, '') AS EmployeeName,
+E.Department,
+E.Gender
+FROM Sales.Orders O
+LEFT JOIN  Sales.Products P
+ON O.[ProductID] = P.ProductID
+LEFT JOIN  Sales.Customers C
+ON O.[CustomerID] = C.CustomerID
+LEFT JOIN  Sales.Employees E
+ON O.SalesPersonID = E.EmployeeID
+)
+
+-- Querying from the view:
+
+SELECT *
+FROM Sales.V_Sales_Summary_Details
+
+/*
+	USE CASE OF VIEWS
+	2. Protect data before sharing with other users.
+
+		EXAMPLE BELOW.
+*/
+
+-- Provide a view for EU Sales team, that combines details
+-- from all tables and excludes data related to USA.
+
+-- SOLUTION:
+
+IF OBJECT_ID ('Sales.V_EU_Sales_Summary_Details', 'V') IS NOT NULL
+	DROP VIEW Sales.V_EU_Sales_Summary_Details
+GO
+
+CREATE VIEW Sales.V_EU_Sales_Summary_Details AS
+(
+SELECT 
+O.[OrderID],
+O.[ProductID],
+O.[CustomerID],
+O.[SalesPersonID],
+O.[OrderDate],
+O.[Quantity],
+O.[Sales],
+P.[Product],
+P.[Category],
+P.[Price],
+COALESCE(C.FirstName, '') + ' ' + COALESCE(C.LastName, '') AS CustomerName,
+C.Country,
+C.Score,
+COALESCE(E.FirstName, '')+ ' ' + COALESCE(E.LastName, '') AS EmployeeName,
+E.Department,
+E.Gender
+FROM Sales.Orders O
+LEFT JOIN  Sales.Products P
+ON O.[ProductID] = P.ProductID
+LEFT JOIN  Sales.Customers C
+ON O.[CustomerID] = C.CustomerID
+LEFT JOIN  Sales.Employees E
+ON O.SalesPersonID = E.EmployeeID
+WHERE C.Country != 'USA'
+);
+
+SELECT * FROM Sales.V_EU_Sales_Summary_Details
+
+
+
+/*
+	
+	CTAS Table (Create Table AS Select) & Temp Tables
+
+		CTAS- Create a new table based on the result of an SQL query.
+
+		- In the Normal method, you first create the table with 'CREATE'
+		  which defines the structure of the table in the DB and then insert 
+		  data later into the database.
+
+		- But in CTAS you define the query, and once you execute the query
+		  the DB has to retrieve the data from another table so it might retrieve
+		  our data from the table we have created using the CREATE/INSERT OR another
+		  table.
+
+		- IN SIMPLE TERMS, CTAS excute the query and the data is ready to be consumed
+		  no need of executing the query twice.
+
+	    - Views are slower compared to CTAS, since views have to query the table again 
+		  once executed.
+
+
+		  SYNTAX:
+
+		  CREATE/INSERT
+
+		  CREATE TABLE Table-Name
+		  (
+			ID INT,
+			Name VARCHAR (50)
+		  )
+
+		  INSERT INTO Table-Name
+		  VALUES(1, 'Brian')
+
+
+
+		  CTAS SYNTAX:
+
+		  CREATE TABLE NAME AS
+		  (
+			SELECT ...
+			FROM ...
+			WHERE ...
+		  )
+
+
+*/
+
+
+SELECT 
+ DATENAME(month, OrderDate) OrderMonth,
+ COUNT(OrderID) TotalOrder
+INTO Sales.MonthlyOrders
+FROM Sales.Orders
+GROUP BY DATENAME(month, OrderDate)
+
+SELECT * FROM Sales.MonthlyOrders;
+
+-- DROP The CTAS 
+
+DROP TABLE Sales.MonthlyOrders;
+
+-- Refreshing the CTAS Table (We use T-SQL to drop and recreate the table)
+
+IF OBJECT_ID('Sales.MonthlyOrders', 'U') IS NOT NULL
+	DROP TABLE Sales.MonthlyOrders
+GO 
+
+SELECT 
+ DATENAME(month, OrderDate) OrderMonth,
+ COUNT(OrderID) TotalOrder
+INTO Sales.MonthlyOrders
+FROM Sales.Orders
+GROUP BY DATENAME(month, OrderDate);
+
+
+/*
+	TEMPORARY TABLES
+	- Stores intermediate results in temporary
+	  storage within the database during the session
+
+	- The db will drop all temp tables once the
+	  session ends.
+
+
+	  TEMP TABLE SYNTAX:
+
+	  SELECT ...
+	  INTO #New-Table
+	  FROM ...
+	  WHERE ...
+*/
+
+-- Created a temporary orders table
+SELECT 
+*
+INTO #Orders
+FROM Sales.Orders
+
+-- Query from a temporary orders table
+
+SELECT
+*
+FROM #Orders
+
+
+
+
+/*
+	
+	STORED PROCEDURES
+	- 
+
+	SYNTAX:
+
+	CREATE PROCEDURE ProceducreName AS
+	BEGIN
+
+		-- SQL STATEMENTS GOES HERE.
+
+	END
+
+
+	EXAMPLES BELOW:
+
+*/
+
+-- Step 1: Write a Query
+-- For US Customers Find the total number of customers
+-- and average score.
+
+
+SELECT
+	COUNT(*) TotalCustomers,
+	AVG(Score) AvgScore
+FROM Sales.Customers
+WHERE Country = 'USA'
+
+-- Step 2: Turn the above Query into a stored procedure.
+
+CREATE PROCEDURE GetCustomerSummary AS
+BEGIN
+	SELECT
+		COUNT(*) TotalCustomers,
+		AVG(Score) AvgScore
+	FROM Sales.Customers
+WHERE Country = 'USA'
+
+END
+
+-- Step 3: Execute the Stored Procedure
+
+EXEC GetCustomerSummary
+
+-- PARAMETERS IN STORED PROCEDURES
+
+-- TASK:
+
+-- For German Customers find the total number of customers and the
+-- average score
+
+/*	SELECT
+	COUNT(*) TotalCustomers, 
+	AVG(Score) AvgScore
+	FROM Sales.Customers
+	WHERE Country = 'Germany'
+
+	Instead of using the same query, we can use
+	stored procedures to change the country parameter
+
+*/
+
+ALTER PROCEDURE GetCustomerSummaryGermany @Country NVARCHAR(50) = 'USA' 
+AS
+BEGIN
+BEGIN TRY
+
+	-- STORED PROCEDURE VARIABLES. 
+	DECLARE @TotalCustomers INT
+	DECLARE @AvgScore FLOAT;
+
+	-- Prepare & Cleanup Data Using a CONTROL FLOW
+
+	IF EXISTS (SELECT 1 FROM Sales.Customers WHERE Score IS NULL AND Country = @Country
+	)
+	BEGIN
+		PRINT ('Updating NULL to 0.');
+		UPDATE Sales.Customers
+		SET Score = 0
+		WHERE Score IS NULL AND Country = @Country
+	END
+
+	ELSE
+	BEGIN
+		PRINT ('No NULL Scores found!')
+	END
+
+	-- Generating Reports
+	
+		SELECT
+			@TotalCustomers = COUNT(*),
+			@AvgScore = AVG(Score)
+		FROM Sales.Customers
+		WHERE Country = @Country;
+
+	PRINT 'Total Customers from ' + @Country + ':' + CAST(@TotalCustomers AS NVARCHAR);
+	PRINT 'Average Score from ' + @Country + ':' + CAST(@AvgScore AS NVARCHAR);
+
+	-- MULTIPLE QUERIES INSIDE 1 STORED PROCEDURE
+
+	-- Find the total number of orders and total sales
+
+	SELECT 
+	COUNT(*) TotalOrders,
+	SUM(Sales) TotalSales,
+	1/0
+	FROM Sales.Orders o
+	JOIN Sales.Customers c
+	ON c.CustomerID = o.CustomerID
+	WHERE c.Country = @Country;
+END TRY
+
+BEGIN CATCH
+	PRINT('An Error Occured!');
+	PRINT('Error Message: ' + ERROR_MESSAGE());
+	PRINT('Error Number: ' + CAST(ERROR_NUMBER() AS NVARCHAR));
+	PRINT('Error Line: ' + CAST(ERROR_LINE() AS NVARCHAR));
+	PRINT('Error Procedure: ' + ERROR_PROCEDURE());
+
+END CATCH
+
+END
+
+
+EXEC GetCustomerSummaryGermany
+EXEC GetCustomerSummaryGermany @Country = 'Germany'
+
+
+/*
+
+	TRIGGERS
+	- They are special stored procedure (set of statements)
+	  that automatically runs in response to a specific
+	  event on a table or view.
+
+	- Events that can occur on a table or view include:
+
+	1. INSERT
+	2. UPDATE
+	3. DELETE
+
+	TYPES OF TRIGGERS:
+	- They can be 'AFTER' or 'INSTEAD OF' Triggers
+	1. DML Triggers INSERT, UPDATE AND DELETE
+	2. DDL Triggers CREATE, ALTER AND DROP
+	3. LOGGON Triggers
+
+	TRIGGER USECASE:
+	- Audit Logs
+
+	TRIGGER SYNTAX:
+
+	CREATE TRIGGER TriggerName ON TableName
+	AFTER INSERT, UPDATE, DELETE
+	BEGIN
+		SQL STATEMENTS GO HERE
+	END
+
+
+	EXAMPLE BELOW:
+*/
+
+SELECT * FROM Sales.Employees
+
+-- Step1: Create Log Table
+
+CREATE TABLE Sales.EmployeeLogs(
+	LogID INT IDENTITY(1, 1) PRIMARY KEY,
+	EmployeeID INT,
+	LogMessage VARCHAR(255),
+	LogDate DATE
+)
+
+-- Step2: Create Trigger on Employees Table
+
+CREATE TRIGGER trg_AfterInsertEmlpoyee ON Sales.Employees
+AFTER INSERT
+AS
+BEGIN
+	INSERT INTO Sales.EmployeeLogs (EmployeeID, LogMessage, LogDate)
+	SELECT
+		EmployeeID,
+		'New Employee Added: ' + CAST(EmployeeID AS NVARCHAR),
+		GETDATE()
+		FROM INSERTED  -- INSERTED is a virtual table that holds a copy of rows being inserted into the target table
+		
+END
+
+-- Step3:  Insert New Data Into Employees
+
+INSERT INTO Sales.Employees
+VALUES
+(7, 'Wiliam', 'Bosire', 'HR', '1988-01-12', 'M', 80000, 3)
+
+
+-- Step4: Check the logs 
+SELECT * FROM Sales.EmployeeLogs
+
+/*
+
+	PERFORMANCE OPTIMIZATION
+	1. Indexes
+		- Data structure that provides quick access to data,
+		  otpimizing the speed of your queries.
+		 
+		 Categories of indexes:
+
+		  i. structure
+		  ii. storage
+		  iii. functions
+
+
+		  	 i. structure
+			 - How db is organizing and referencing the data
+
+		  Types of Indexes:
+
+		  a. Clustered
+		  b. Non-Clustered
+
+
+		    ii. storage
+			- How the data is stored physically in the db
+
+		  Types of Indexes:
+
+		  a. Rowstore Index
+		  b. Columnstore Index
+
+
+		    iii. functions
+
+		  a. Unique Index
+		  b. Filtered Index
+
+
+	2. Partitons
+	3. Performance Tips
+
+
+	Index Syntax:
+
+	CREATE [CLUSTERED | NONCLUSTERED] INDEX index_name ON table_name (column1, column2, ...)
+
+	NB: By default if you do not explicitly mention the index, by default it will be nonclustered index.
+
+	Examples Below:
+*/
+
+-- Copy the data from customer table into DBCustomer table
+-- This table has no index therefore has a Heap Structure where it has to scan the whole data page.
+
+SELECT *
+INTO Sales.DBCustomers
+FROM Sales.Customers
+
+-- Create an index
+
+CREATE CLUSTERED INDEX idx_DBCustostomers_CustomerID 
+ON Sales.DBCustomers  (CustomerID);
+
+
+-- To drop the index and create a new one on the different column we do
+
+DROP INDEX idx_DBCustostomers_CustomerID
+ON Sales.DBCustomers;
+
+-- Example2
+-- Lets say we mostly search a customer using the last name more frequently, we 
+-- can create a nonclustered index to improve performance.
+
+-- NONCLUSTERED INDEX
+CREATE NONCLUSTERED INDEX idx_DBCustomers_LastName 
+ON Sales.DBCustomers (LastName)
+
+
+-- COMPOSITE INDEX -> Has multiple columns inside the same index
+
+SELECT *
+FROM Sales.DBCustomers
+WHERE Country = 'USA' AND Score > 500
+
+-- While creating the index and for it to work you should list those
+-- columns as you have used them in your query. Country then Score.
+
+CREATE INDEX idx_DBCustomers_CountryScore
+ON Sales.DBCustomers (Country, Score)
+
+
+-- COLUMNSTORE INDEX
+
+CREATE CLUSTERED COLUMNSTORE INDEX idx_DBCustomer_CS
+ON Sales.DBCustomers -- NB: You can't give the column name like CustomerID since we are dealing with column store
+
+-- NB: You can't create a clustered and nonclustered column store you have to decide on
+-- one or else drop one eg:
+
+DROP INDEX idx_DBCustomer_CS
+ON Sales.DBCustomers
+
+
+-- Now we can create a nonclustered columnstore index with the desired columns
+
+CREATE NONCLUSTERED COLUMNSTORE INDEX idx_DBCustomer_CS_FirstName
+ON Sales.DBCustomers (FirstName)
+
+-- UNIQUE CLUSTER
+
+SELECT * FROM Sales.Products
+
+-- Creating a unique index on the products table
+
+CREATE UNIQUE NONCLUSTERED INDEX idx_Products_Category
+ON Sales.Products (Category) -- we will get an error since duplicates in the columns will prevent creating a unique index
+
+-- INDEX PERFORMANCE MANAGEMENT AND MONITORING.
+
+-- List all indexes on a specific table
+
+sp_helpindex 'Sales.DBCustomers'
+
+-- Monitoring Index Usage.
+
+SELECT 
+	tbl.name AS TableName, 
+	idx.name AS IndexName,
+	idx.type_desc AS IndexType,
+	idx.is_primary_key AS IsPrimaryKey,
+	idx.is_unique AS IsUnique,
+	idx.is_disabled AS IsDisabled,
+	s.user_seeks,
+	s.user_scans,
+	s.user_lookups,
+	s.user_updates,
+	COALESCE(s.last_user_seek,s.last_user_scan) LastUpdate
+FROM sys.indexes idx
+JOIN sys.tables tbl
+ON idx.object_id = tbl.object_id
+LEFT JOIN sys.dm_db_index_usage_stats s
+ON s.object_id = idx.object_id
+AND s.index_id = idx.index_id
+ORDER BY tbl.name, idx.name 
+
+
+SELECT * FROM sys.dm_db_index_usage_stats
+
+-- Monitor Missing Indexes
+-- Fragmentation  By: Reorganize | Rebuild
+
+
+-- EXECUTION PLAN
+
+-- Is a roadmap generated by a db on how it will 
+-- execute your query step by step.
+
+USE AdventureWorksDW2022;
+
+SELECT * 
+INTO FactResellerSales_HEAP
+FROM FactResellerSales;
+
+
+SELECT * FROM FactResellerSales_HEAP
+
+
+
+
+/*
+	PARTITIONS
+	- This is an SQL technique to divide big tables
+	  into smaller partitions in order to optimize 
+	  performance. 21:29:00
+*/
